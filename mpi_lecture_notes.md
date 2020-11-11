@@ -9,6 +9,7 @@ IEEE Technical Workshop 11/12/2020
   - [General MPI terms](#general-mpi-terms)
   - [Sending and Receiving Data](#sending-and-receiving-data)
       - [Blocking vs. Non-Blocking Send/Receive](#blocking-vs-non-blocking-sendreceive)
+        - [Test vs Wait for Non-Blocking Receives](#test-vs-wait-for-non-blocking-receives)
       - [Buffering](#buffering)
   - [Collective Communication Routines](#collective-communication-routines)
   - [Examples](#examples)
@@ -82,7 +83,7 @@ MPI_Recv( void* data, int count, MPI_Datatype datatype, int source, int tag, MPI
 comm.send( obj, dest, tag=0 )
 comm.recv( source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=None )
 ```
-* non-blocking sends and receives return alm ost immediately and don't wait for communication to complete.
+* non-blocking sends and receives return almost immediately and don't wait for communication to complete.
   * usually used to overlap computation with communication for performance gain
   * need some kind of wait routine to make sure data is ready to be modified
 ```C
@@ -91,10 +92,23 @@ MPI_Irecv( void* data, int count, MPI_Datatype datatype, int dest, int tag, MPI_
 Waitall( int num, MPI_Request *reqs, MPI_Status *stats );
 ```
 ```python
-comm.isend( rank, partner )
+comm.isend( message, partner )
 req = comm.irecv( source=partner, tag=tag )
 message = req.wait()
 ```
+##### Test vs Wait for Non-Blocking Receives
+* Can wait for a non-blocking receive to complete, which means the entire task stops and waits for the receive to complete
+  * takes time and can't do anything in the meantime
+* Can also test the request returned from the receive; this way you can do computation while waiting for the value to be received
+```C
+// flag will be non-zero when receive is completed
+MPI_Test( MPI_Request *req, int *flag, MPI_Status *status );
+```
+```python
+# will return a 2-tuple (bool completed, message )
+Request.test()
+```
+* there are also methods Testall, Testany which work similarly to python all() and any() functions
 #### Buffering
 * A system buffer are is reserved to hold data in transit
   * buffer is managed entirely by MPI library and is oblique to the programmer
@@ -102,21 +116,33 @@ message = req.wait()
   * If message 1 is sent before message 2 to the same task, message 1 will always be received before message 2
   * If receive 1 is posted before receive 2, receive 1 will always receive its value before receive 2 
 ## Collective Communication Routines
-Because we can hahahahahaah
+* Besides point to point operation, there are also operations that either have input from multiple tasks or output to multiple tasks
+* 3 types of Collective Operations:
+  1. Synchronization - processes wait until all processes at the synchronization point
+      * barrier
+  2. Data Movement - data is either sent out to multiple tasks or gathered and sent to one task
+      * broadcast, gather, scatter
+  3. Collective Computation - one task gathers data from all other members and performs some operation on all the data
+      * reduce(sum, min, max)
 
 ## Examples
-Make a copy of Google Colab Notebook at **link here**
+Make a copy of Google Colab Notebook at:
+* [C template](https://colab.research.google.com/drive/12-AmHyu3AvMKvNoYE4xiOlxOnt_k7CcQ?usp=sharing)
+* [Python template](https://colab.research.google.com/drive/1DmPziA4KuqG6Z9EwsM07X5OYod_Wq2SF?usp=sharing)
 #### Hello World
 Every task prints Hello World
 
 #### Hello Master Task
 Every task (besides the master task) sends a message to the master task
+![hello master task](./images/hello_master_task.png)
 
 #### (Non-Blocking) Ping
 Every task sends and receives data from one partner using non-blocking sends/receives 
+![non-blocking ping](./images/non_blocking_ping.png)
 
 #### Round Robin
 Every task sends data to an adjacent task
+![round robin](./images/round_robin.png)
 
 #### Monte Carlo
 Calculate Pi
@@ -141,11 +167,11 @@ Some interesting algorithms to look into:
 * Or you can just use your own computer
   * most desktops/laptops are multicore
 * Some project ideas
-  * idea 1
-  * idea 2
-  * idea 3
-  * idea 4
+  * One thread deals with input, the other does some computation
+  * A large calculation spread across multiple threads
+    * neural nets, matrix multiplication
 #### Resources/Cool Reads
 * [MPI Tutorial](https://computing.llnl.gov/tutorials/mpi/) (in C and Fortran)
 * [mpi4py docs](https://mpi4py.readthedocs.io/en/stable/)
+* [Some more on Non-Blocking](https://www.codingame.com/playgrounds/349/introduction-to-mpi/non-blocking-communications---exercise)
 
